@@ -191,3 +191,7 @@ bash ./scripts/reset.sh
 Run the *init.sh* script to reload a new *production* instance. 
  
 
+### Backup / Restore
+
+This profile includes two utility scripts to assist with performing cold backups and restores. You can find these scripts here: [./scripts/backup.sh](./scripts/backup.sh) and [./scripts/restore.sh](./scripts/restore.sh)
+For detailed information about backup and restore strategies and processes, please refer to the [dedicated documentation](https://docs.strangebee.com/thehive/operations/backup-restore/overview/).

@@ -9,12 +9,25 @@
 This repository includes a docker compose file designed to set up TheHive and Cortex on a server for testing purposes. This version provides all necessary components to deploy both TheHive and Cortex on a single server.
 
 ---
-- [Requirements](#requirements)
-- [Content of the application stack](#content-of-the-application-stack)
-- [First steps / Initialisation](#first-steps--initialisation)
-- [Run the application stack](#run-the-application-stack)
-- [Access to the applications](#access-to-the-applications)
-- [Additional content](#additional-content)
+- [Docker compose for TheHive and Cortex](#docker-compose-for-thehive-and-cortex)
+  - [Requirements](#requirements)
+  - [Content of the application stack](#content-of-the-application-stack)
+    - [Configuration and data files](#configuration-and-data-files)
+    - [Content, and purpose of each files and folders](#content-and-purpose-of-each-files-and-folders)
+      - [Cassandra](#cassandra)
+      - [Elasticsearch](#elasticsearch)
+      - [TheHive](#thehive)
+      - [Cortex](#cortex)
+      - [Nginx](#nginx)
+      - [Certificates](#certificates)
+      - [Scripts](#scripts)
+  - [First steps / Initialisation](#first-steps--initialisation)
+  - [Run the application stack](#run-the-application-stack)
+  - [Access to the applications](#access-to-the-applications)
+  - [Additional content](#additional-content)
+    - [Reset your environment](#reset-your-environment)
+    - [Backup / Restore](#backup--restore)
+    - [Demo data](#demo-data)
 
 ---
 
@@ -237,6 +250,12 @@ bash ./scripts/reset.sh
 
 Run the *init.sh* script to reload a new *production* instance. 
  
+
+### Backup / Restore
+
+This profile includes two utility scripts to assist with performing cold backups and restores. You can find these scripts here: [./scripts/backup.sh](./scripts/backup.sh) and [./scripts/restore.sh](./scripts/restore.sh)
+For detailed information about backup and restore strategies and processes, please refer to the [dedicated documentation](https://docs.strangebee.com/thehive/operations/backup-restore/overview/).
+
 
 ### Demo data
 
