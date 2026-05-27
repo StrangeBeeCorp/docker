@@ -29,6 +29,8 @@
 /*/.env
 # Ignore .DS_Store files
 /**/.DS_Store
+# Ignore local Claude Code project guidance
+/CLAUDE.md
 # Ignore server keys/certs
 /**/server.key
 /**/server.crt

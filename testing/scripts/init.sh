@@ -101,7 +101,7 @@ bash $(dirname $0)/check_permissions.sh
 if [ $? -eq 0 ]
 then
     init
-    success "Environment initialized successfully. Run `docker compose up` to start the application stack."
+    success "Environment initialized successfully. Run 'docker compose up' to start the application stack."
 else
     error "Initialisation did not complete due to permissions issue. Please run ./scripts/check_permissions.sh to check"
 fi
