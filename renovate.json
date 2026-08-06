@@ -1,0 +1,52 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard"
+  ],
+  "timezone": "Etc/UTC",
+  "//schedule": "Cadence is controlled by the workflow cron in .github/workflows/renovate.yml (self-hosted). Intentionally NOT set here, so every scheduled run is free to act instead of being gated to a window that could drift out of sync with the cron.",
+  "labels": ["dependencies", "automated"],
+  "commitMessagePrefix": "chore:",
+  "commitMessageAction": "Bump",
+  "commitMessageExtra": "version to {{newVersion}}",
+
+  "//": "versions.env is the single source of truth init.sh cats into every stack's .env. Its bespoke `key = 'value'` format is invisible to native Docker managers, so we parse it with a custom regex manager — one block per product because the env-var name doesn't encode the Docker Hub namespace.",
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^versions\\.env$/"],
+      "matchStrings": ["thehive_image_version = '(?<currentValue>[^']+)'"],
+      "depNameTemplate": "strangebee/thehive",
+      "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^versions\\.env$/"],
+      "matchStrings": ["cortex_image_version = '(?<currentValue>[^']+)'"],
+      "depNameTemplate": "thehiveproject/cortex",
+      "datasourceTemplate": "docker"
+    }
+  ],
+
+  "packageRules": [
+    {
+      "description": "Friendly PR topic for TheHive",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["strangebee/thehive"],
+      "commitMessageTopic": "TheHive"
+    },
+    {
+      "description": "Friendly PR topic for Cortex",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["thehiveproject/cortex"],
+      "commitMessageTopic": "Cortex"
+    },
+    {
+      "description": "Loudly flag major bumps — they may need config migration; a compose that starts is not proof the data model migrated.",
+      "matchManagers": ["custom.regex"],
+      "matchUpdateTypes": ["major"],
+      "addLabels": ["major-bump"]
+    }
+  ]
+}
