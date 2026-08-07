@@ -1,16 +1,8 @@
 name: Renovate
 
-# Self-hosted Renovate runner. Renovate reads renovate.json at the repo root and
-# opens PRs that bump the TheHive / Cortex tags pinned in versions.env.
-#
-# Requires a repository secret RENOVATE_TOKEN — a PAT (classic: `repo` scope, or
-# fine-grained: Contents RW + Pull requests RW + Issues RW for the Dependency
-# Dashboard). A PAT is mandatory for self-hosted Renovate, and unlike the default
-# GITHUB_TOKEN, PRs it opens WILL trigger any future validation workflows.
-
 on:
   schedule:
-    - cron: '0 6 * * *'   # 06:00 UTC daily — the single source of cadence
+    - cron: '0 6 * * *'
   workflow_dispatch:
     inputs:
       logLevel:
@@ -20,13 +12,10 @@ on:
         type: choice
         options: [debug, info, warn, error]
 
-# Only one Renovate run at a time; never cancel an in-flight run mid-PR.
 concurrency:
   group: renovate
   cancel-in-progress: false
 
-# Renovate authenticates via RENOVATE_TOKEN, so the workflow token only needs
-# read access for actions/checkout.
 permissions:
   contents: read
 
@@ -42,6 +31,5 @@ jobs:
         with:
           token: ${{ secrets.RENOVATE_TOKEN }}
         env:
-          # Scope this self-hosted run to just this repo (no org autodiscovery).
           RENOVATE_REPOSITORIES: ${{ github.repository }}
           LOG_LEVEL: ${{ inputs.logLevel || 'info' }}
