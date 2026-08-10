@@ -64,7 +64,7 @@ api() {
   local body code
   body=$(curl_api -o /tmp/smoke_resp.json -w '%{http_code}' \
     -X "$method" "${BASE_URL}${endpoint}" \
-    -H 'Content-Type: application/json' "${hdr[@]}" \
+    -H 'Content-Type: application/json' ${hdr[@]+"${hdr[@]}"} \
     -u "$auth" -d "$data" 2>/dev/null || echo 000)
   code=$body
   if [ "$code" = "$expected" ]; then
@@ -185,14 +185,28 @@ verify() {
     "${BASE_URL}/api/v1/caseTemplate/MISPEvent" | jq -e '.name == "MISPEvent"' >/dev/null 2>&1 \
     && success "✓ case template" || { error "✗ case template missing"; failed=$((failed+1)); }
 
-  if [ -n "$CASE_ID" ] && [ "$CASE_ID" != "null" ]; then
+  # Alert must exist — a missing/failed alert is a failure, not a skip.
+  if [ -n "$ALERT_ID" ] && [ "$ALERT_ID" != "null" ] \
+     && curl_api -u "${ORG_USER}:${ORG_PASSWORD}" -H "X-Organisation: ${ORG_NAME}" \
+        "${BASE_URL}/api/v1/alert/${ALERT_ID}" | jq -e '._id' >/dev/null 2>&1; then
+    success "✓ alert '${ALERT_ID}'"
+  else
+    error "✗ alert missing (id='${ALERT_ID:-}')"; failed=$((failed+1))
+  fi
+
+  # Case must exist with >= 3 tasks — a missing/failed case is a failure, not a skip.
+  if [ -n "$CASE_ID" ] && [ "$CASE_ID" != "null" ] \
+     && curl_api -u "${ORG_USER}:${ORG_PASSWORD}" -H "X-Organisation: ${ORG_NAME}" \
+        "${BASE_URL}/api/v1/case/${CASE_ID}" | jq -e '._id' >/dev/null 2>&1; then
     local tasks
     tasks=$(curl_api -u "${ORG_USER}:${ORG_PASSWORD}" -H "X-Organisation: ${ORG_NAME}" \
       -H "Content-Type: application/json" "${BASE_URL}/api/v1/query?name=tasks" \
       -d '{"query":[{"_name":"getCase","idOrName":"'"${CASE_ID}"'"},{"_name":"tasks"}]}' \
       | jq '. | length' 2>/dev/null)
     [ -n "$tasks" ] && [ "$tasks" -ge 3 ] 2>/dev/null \
-      && success "✓ case has ${tasks} tasks" || { error "✗ case tasks: ${tasks} (<3)"; failed=$((failed+1)); }
+      && success "✓ case '${CASE_ID}' has ${tasks} tasks" || { error "✗ case tasks: ${tasks:-0} (<3)"; failed=$((failed+1)); }
+  else
+    error "✗ case missing (id='${CASE_ID:-}')"; failed=$((failed+1))
   fi
 
   return $failed
