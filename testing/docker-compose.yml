@@ -9,8 +9,8 @@ services:
       - CASSANDRA_CLUSTER_NAME=TheHive
       - CASSANDRA_AUTHENTICATOR=PasswordAuthenticator
       - CASSANDRA_NUM_TOKENS=4
-      - HEAP_NEWSIZE=1280M
-      - MAX_HEAP_SIZE=200M
+      - MAX_HEAP_SIZE=1024M
+      - HEAP_NEWSIZE=256M
     volumes:
       - ./cassandra/data:/var/lib/cassandra
       - ./cassandra/logs:/var/log/cassandra
