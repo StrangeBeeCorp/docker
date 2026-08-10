@@ -37,12 +37,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Initialise the stack (non-interactive)
-        # init.sh and check_permissions.sh are interactive (a "fix permissions?"
-        # prompt, then a hostname prompt). Pipe `yes` so every prompt is answered
-        # 'y' from an infinite stream -> no read can ever block the runner.
-        # Side effect: the hostname becomes 'y', which is harmless here -- nginx is
-        # a catch-all server block and the tests hit 127.0.0.1 directly.
-        run: yes | bash ./scripts/init.sh
+        # --yes runs init.sh + check_permissions.sh with no prompts: perms are
+        # auto-fixed and the hostname defaults to uname -n. No stdin feeding.
+        run: bash ./scripts/init.sh --yes
 
       - name: Start the stack (gated on health)
         run: docker compose up -d --wait --wait-timeout 600

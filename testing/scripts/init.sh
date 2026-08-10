@@ -6,11 +6,24 @@
 source $(dirname $0)/output.sh         # Used to display output
 source $(dirname $0)/generate_certs.sh # Used to generate self signed or custom certificate
 
+## Non-interactive mode: with -y/--yes (or ASSUME_YES=1) the script runs without
+## any prompt -- permissions are auto-fixed and the hostname defaults to
+## `uname -n` (override with the SERVICE_HOSTNAME env var). Used by CI.
+ASSUME_YES=${ASSUME_YES:-0}
+for arg in "$@"; do
+  case "$arg" in
+    -y|--yes) ASSUME_YES=1 ;;
+  esac
+done
 
 STATUS=0
 
 define_hostname(){
 SYSTEM_HOSTNAME=$(uname -n)
+if [ "${ASSUME_YES}" -eq 1 ]; then
+    SERVICE_HOSTNAME="${SERVICE_HOSTNAME:-${SYSTEM_HOSTNAME}}"
+    return
+fi
 info "Define the hostname used to connect to this server"
 read -p "Server Name (default: ${SYSTEM_HOSTNAME} ): " choice
 SERVICE_HOSTNAME=${choice:-${SYSTEM_HOSTNAME}}
@@ -97,7 +110,11 @@ _EOF_
 
 
 ## ENSURE PERMISSIONS ARE WELL SET BEFORE INITIALISING
-bash $(dirname $0)/check_permissions.sh
+if [ "${ASSUME_YES}" -eq 1 ]; then
+    bash $(dirname $0)/check_permissions.sh --yes
+else
+    bash $(dirname $0)/check_permissions.sh
+fi
 if [ $? -eq 0 ]
 then
     init
