@@ -1,25 +1,9 @@
 #!/usr/bin/env bash
-#
-# Smoke test for the testing/ all-in-one stack.
-#
-# Adapted from the helm-charts thehive/tools/test/smoke.sh, retargeted from
-# Kubernetes (kubectl port-forward) to the docker-compose deployment: it talks
-# to TheHive through the nginx reverse proxy over HTTPS with a self-signed cert
-# (hence curl -k), at the /thehive context path.
-#
-# Exercises a realistic workflow end to end, then reads everything back:
-#   org -> org-admin user -> custom fields -> case template
-#        -> alert (+observables, +comments)
-#        -> case  (+observables, +tasks, +logs, status change)
-# and asserts the resources exist with the expected shape. Non-zero exit on any
-# verification failure.
-#
-# Credentials default to the values test_init_thehive.sh seeds; override via env.
 
 set -uo pipefail
 
 BASE_URL="${BASE_URL:-https://127.0.0.1/thehive}"
-CURL_OPTS="${CURL_OPTS:--sk}"                       # -k: self-signed cert in CI
+CURL_OPTS="${CURL_OPTS:--sk}"
 ADMIN_USER="${ADMIN_USER:-admin@thehive.local}"
 ADMIN_PASSWORD="${ADMIN_PASSWORD:-secret}"
 ORG_USER="${ORG_USER:-thehive@thehive.local}"
@@ -40,7 +24,6 @@ check_prerequisites() {
   done
 }
 
-# Wait until the admin credentials return 200 on /api/v1/user/current.
 wait_ready() {
   info "Waiting for TheHive API at ${BASE_URL} ..."
   local max=60 count=0 code
@@ -54,9 +37,6 @@ wait_ready() {
   error "TheHive did not become ready in time"; exit 1
 }
 
-# api <expected_status> <METHOD> <endpoint> <user:pass> <json> [extra headers...]
-# Prints the response body on success (for _id extraction), returns non-zero on
-# unexpected status.
 api() {
   local expected=$1 method=$2 endpoint=$3 auth=$4 data=$5; shift 5
   local hdr=() h
@@ -185,7 +165,6 @@ verify() {
     "${BASE_URL}/api/v1/caseTemplate/MISPEvent" | jq -e '.name == "MISPEvent"' >/dev/null 2>&1 \
     && success "✓ case template" || { error "✗ case template missing"; failed=$((failed+1)); }
 
-  # Alert must exist — a missing/failed alert is a failure, not a skip.
   if [ -n "$ALERT_ID" ] && [ "$ALERT_ID" != "null" ] \
      && curl_api -u "${ORG_USER}:${ORG_PASSWORD}" -H "X-Organisation: ${ORG_NAME}" \
         "${BASE_URL}/api/v1/alert/${ALERT_ID}" | jq -e '._id' >/dev/null 2>&1; then
@@ -194,7 +173,6 @@ verify() {
     error "✗ alert missing (id='${ALERT_ID:-}')"; failed=$((failed+1))
   fi
 
-  # Case must exist with >= 3 tasks — a missing/failed case is a failure, not a skip.
   if [ -n "$CASE_ID" ] && [ "$CASE_ID" != "null" ] \
      && curl_api -u "${ORG_USER}:${ORG_PASSWORD}" -H "X-Organisation: ${ORG_NAME}" \
         "${BASE_URL}/api/v1/case/${CASE_ID}" | jq -e '._id' >/dev/null 2>&1; then

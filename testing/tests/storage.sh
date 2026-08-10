@@ -1,14 +1,4 @@
 #!/usr/bin/env bash
-#
-# Object-storage test for the testing/ all-in-one stack.
-#
-# Adapted from the helm-charts thehive/tools/test/storage.sh, retargeted to the
-# docker-compose deployment (nginx HTTPS + self-signed cert, /thehive context).
-#
-# Verifies the attachment storage path end to end: upload files as task-log
-# attachments and as a file observable, download them back, and assert the
-# SHA256 round-trips byte-for-byte. Depends on the 'demo' org + org-admin user
-# that smoke.sh creates; run smoke.sh first.
 
 set -uo pipefail
 
@@ -39,7 +29,7 @@ check_prerequisites() {
 create_test_files() {
   mkdir -p "${TEST_DIR}"; cd "${TEST_DIR}" || exit 1
   printf 'TheHive object-storage verification.\n' > small.txt
-  dd if=/dev/urandom of=medium.bin bs=1024 count=1024 2>/dev/null   # 1 MiB
+  dd if=/dev/urandom of=medium.bin bs=1024 count=1024 2>/dev/null
   seq 1 50000 | sed 's/.*/Line &: the quick brown fox jumps over the lazy dog/' > large.txt
   SMALL_SHA=$(sha256 small.txt); MEDIUM_SHA=$(sha256 medium.bin); LARGE_SHA=$(sha256 large.txt)
   success "Test files created (small/medium 1MiB/large)"
@@ -55,8 +45,6 @@ setup_case_task() {
   success "Case ${CASE_ID} / task ${TASK_ID} ready"
 }
 
-# Upload $1 via a task log, download it back, assert SHA256 == $2. No Content-Type
-# header here: curl sets the multipart boundary for -F.
 roundtrip_log() {
   local file=$1 expected=$2 resp log_id att_id
   resp=$(curl_api -X POST "${BASE_URL}/api/v1/task/${TASK_ID}/log" \
@@ -69,7 +57,6 @@ roundtrip_log() {
   else error "✗ log ${file} SHA256 MISMATCH"; return 1; fi
 }
 
-# Upload $1 as a file observable, download it back, assert SHA256 == $2.
 roundtrip_observable() {
   local file=$1 expected=$2 resp obs_id att_id
   resp=$(curl_api -X POST "${BASE_URL}/api/v1/case/${CASE_ID}/observable" \

@@ -4,8 +4,6 @@ source $(dirname $0)/output.sh
 ## This program ensures that all files and folders are owned by the current user and permissions are set accordingly to make everything run properly
 ## This program is run by init.sh program
 
-## Non-interactive mode: with -y/--yes (or ASSUME_YES=1) permission drift is
-## fixed without prompting. Used by CI so the script never blocks on stdin.
 ASSUME_YES=${ASSUME_YES:-0}
 for arg in "$@"; do
   case "$arg" in

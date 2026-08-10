@@ -1,12 +1,8 @@
 name: testing stack
 
-# Installs the testing/ all-in-one stack the same way an operator would
-# (scripts/init.sh + docker compose) on a fresh runner, waits for every service
-# to become healthy, then runs the smoke + object-storage tests against it.
-
 on:
   push:
-    branches: [main]        # post-merge run only; PRs cover feature branches
+    branches: [main]
     paths:
       - 'testing/**'
       - 'versions.env'
@@ -37,8 +33,6 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Initialise the stack (non-interactive)
-        # --yes runs init.sh + check_permissions.sh with no prompts: perms are
-        # auto-fixed and the hostname defaults to uname -n. No stdin feeding.
         run: bash ./scripts/init.sh --yes
 
       - name: Start the stack (gated on health)

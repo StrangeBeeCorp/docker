@@ -6,9 +6,6 @@
 source $(dirname $0)/output.sh         # Used to display output
 source $(dirname $0)/generate_certs.sh # Used to generate self signed or custom certificate
 
-## Non-interactive mode: with -y/--yes (or ASSUME_YES=1) the script runs without
-## any prompt -- permissions are auto-fixed and the hostname defaults to
-## `uname -n` (override with the SERVICE_HOSTNAME env var). Used by CI.
 ASSUME_YES=${ASSUME_YES:-0}
 for arg in "$@"; do
   case "$arg" in
