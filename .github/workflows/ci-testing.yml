@@ -1,4 +1,4 @@
-name: CI - testing stack
+name: testing stack
 
 # Installs the testing/ all-in-one stack the same way an operator would
 # (scripts/init.sh + docker compose) on a fresh runner, waits for every service
