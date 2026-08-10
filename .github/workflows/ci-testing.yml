@@ -1,0 +1,66 @@
+name: CI - testing stack
+
+# Installs the testing/ all-in-one stack the same way an operator would
+# (scripts/init.sh + docker compose) on a fresh runner, waits for every service
+# to become healthy, then runs the smoke + object-storage tests against it.
+
+on:
+  push:
+    paths:
+      - 'testing/**'
+      - 'versions.env'
+      - '.github/workflows/ci-testing.yml'
+  pull_request:
+    paths:
+      - 'testing/**'
+      - 'versions.env'
+      - '.github/workflows/ci-testing.yml'
+  workflow_dispatch: {}
+
+concurrency:
+  group: ci-testing-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  testing-stack:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: testing
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Initialise the stack (non-interactive)
+        # A fresh checkout's dirs are mode 755, so check_permissions.sh prompts to
+        # fix them -> answer 'y'; init.sh then prompts for a hostname -> '' default.
+        run: printf 'y\n' | bash ./scripts/init.sh
+
+      - name: Start the stack (gated on health)
+        run: docker compose up -d --wait --wait-timeout 600
+
+      - name: Smoke test (org / user / case / alert workflow)
+        run: bash ./tests/smoke.sh
+
+      - name: Object-storage test (attachment SHA256 round-trip)
+        run: bash ./tests/storage.sh
+
+      - name: Collect container logs on failure
+        if: failure()
+        run: docker compose logs --no-color --timestamps > compose-logs.txt 2>&1 || true
+
+      - name: Upload container logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: testing-stack-logs
+          path: testing/compose-logs.txt
+          if-no-files-found: ignore
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
