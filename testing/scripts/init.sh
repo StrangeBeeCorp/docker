@@ -6,11 +6,21 @@
 source $(dirname $0)/output.sh         # Used to display output
 source $(dirname $0)/generate_certs.sh # Used to generate self signed or custom certificate
 
+ASSUME_YES=${ASSUME_YES:-0}
+for arg in "$@"; do
+  case "$arg" in
+    -y|--yes) ASSUME_YES=1 ;;
+  esac
+done
 
 STATUS=0
 
 define_hostname(){
 SYSTEM_HOSTNAME=$(uname -n)
+if [[ "${ASSUME_YES}" -eq 1 ]]; then
+    SERVICE_HOSTNAME="${SERVICE_HOSTNAME:-${SYSTEM_HOSTNAME}}"
+    return
+fi
 info "Define the hostname used to connect to this server"
 read -p "Server Name (default: ${SYSTEM_HOSTNAME} ): " choice
 SERVICE_HOSTNAME=${choice:-${SYSTEM_HOSTNAME}}
@@ -18,7 +28,7 @@ SERVICE_HOSTNAME=${choice:-${SYSTEM_HOSTNAME}}
 
 
 init() {
-    ELASTICSEARCH_PASSWORD=$(cat /dev/urandom | LC_CTYPE=C tr -dc '[:alnum:]' | fold -w 64 | head -n 1)
+    ELASTICSEARCH_PASSWORD=$(head -c 8192 /dev/urandom | LC_CTYPE=C tr -dc '[:alnum:]' | head -c 64)
 
     ## INIT THEHIVE CONFIGURATION
     THEHIVEINDEXFILE="./thehive/config/index.conf"
@@ -33,7 +43,7 @@ init() {
     if [ ! -f ${THEHIVESECRETFILE} ]
     then
         cat > ${THEHIVESECRETFILE} << _EOF_
-play.http.secret.key="$(cat /dev/urandom | LC_CTYPE=C tr -dc '[:alnum:]' | fold -w 64 | head -n 1)"
+play.http.secret.key="$(head -c 8192 /dev/urandom | LC_CTYPE=C tr -dc '[:alnum:]' | head -c 64)"
 _EOF_
     else
         STATUS=1
@@ -53,7 +63,7 @@ _EOF_
     if [ ! -f ${CORTEXSECRETFILE} ]
     then
         cat > ${CORTEXSECRETFILE} << _EOF_
-play.http.secret.key="$(cat /dev/urandom | LC_CTYPE=C tr -dc '[:alnum:]' | fold -w 64 | head -n 1)"
+play.http.secret.key="$(head -c 8192 /dev/urandom | LC_CTYPE=C tr -dc '[:alnum:]' | head -c 64)"
 _EOF_
     else
         STATUS=1
@@ -97,7 +107,11 @@ _EOF_
 
 
 ## ENSURE PERMISSIONS ARE WELL SET BEFORE INITIALISING
-bash $(dirname $0)/check_permissions.sh
+if [[ "${ASSUME_YES}" -eq 1 ]]; then
+    bash $(dirname $0)/check_permissions.sh --yes
+else
+    bash $(dirname $0)/check_permissions.sh
+fi
 if [ $? -eq 0 ]
 then
     init
