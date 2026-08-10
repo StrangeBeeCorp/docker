@@ -34,7 +34,7 @@ jobs:
         working-directory: testing
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Initialise the stack (non-interactive)
         # --yes runs init.sh + check_permissions.sh with no prompts: perms are
@@ -56,7 +56,7 @@ jobs:
 
       - name: Upload container logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: testing-stack-logs
           path: testing/compose-logs.txt
