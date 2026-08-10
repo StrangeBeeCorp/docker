@@ -6,6 +6,7 @@ name: CI - testing stack
 
 on:
   push:
+    branches: [main]        # post-merge run only; PRs cover feature branches
     paths:
       - 'testing/**'
       - 'versions.env'
