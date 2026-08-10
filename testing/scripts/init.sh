@@ -31,7 +31,7 @@ SERVICE_HOSTNAME=${choice:-${SYSTEM_HOSTNAME}}
 
 
 init() {
-    ELASTICSEARCH_PASSWORD=$(cat /dev/urandom | LC_CTYPE=C tr -dc '[:alnum:]' | fold -w 64 | head -n 1)
+    ELASTICSEARCH_PASSWORD=$(head -c 8192 /dev/urandom | LC_CTYPE=C tr -dc '[:alnum:]' | head -c 64)
 
     ## INIT THEHIVE CONFIGURATION
     THEHIVEINDEXFILE="./thehive/config/index.conf"
@@ -46,7 +46,7 @@ init() {
     if [ ! -f ${THEHIVESECRETFILE} ]
     then
         cat > ${THEHIVESECRETFILE} << _EOF_
-play.http.secret.key="$(cat /dev/urandom | LC_CTYPE=C tr -dc '[:alnum:]' | fold -w 64 | head -n 1)"
+play.http.secret.key="$(head -c 8192 /dev/urandom | LC_CTYPE=C tr -dc '[:alnum:]' | head -c 64)"
 _EOF_
     else
         STATUS=1
@@ -66,7 +66,7 @@ _EOF_
     if [ ! -f ${CORTEXSECRETFILE} ]
     then
         cat > ${CORTEXSECRETFILE} << _EOF_
-play.http.secret.key="$(cat /dev/urandom | LC_CTYPE=C tr -dc '[:alnum:]' | fold -w 64 | head -n 1)"
+play.http.secret.key="$(head -c 8192 /dev/urandom | LC_CTYPE=C tr -dc '[:alnum:]' | head -c 64)"
 _EOF_
     else
         STATUS=1
