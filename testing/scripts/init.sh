@@ -20,7 +20,7 @@ STATUS=0
 
 define_hostname(){
 SYSTEM_HOSTNAME=$(uname -n)
-if [ "${ASSUME_YES}" -eq 1 ]; then
+if [[ "${ASSUME_YES}" -eq 1 ]]; then
     SERVICE_HOSTNAME="${SERVICE_HOSTNAME:-${SYSTEM_HOSTNAME}}"
     return
 fi
@@ -110,7 +110,7 @@ _EOF_
 
 
 ## ENSURE PERMISSIONS ARE WELL SET BEFORE INITIALISING
-if [ "${ASSUME_YES}" -eq 1 ]; then
+if [[ "${ASSUME_YES}" -eq 1 ]]; then
     bash $(dirname $0)/check_permissions.sh --yes
 else
     bash $(dirname $0)/check_permissions.sh

@@ -64,7 +64,7 @@ ${NON_COMPLIANT_EXECUTABLE_FILES}
 " | sed '/^$/d' # strip empty lines
 
   echo  " "
-  if [ "${ASSUME_YES}" -eq 1 ]; then
+  if [[ "${ASSUME_YES}" -eq 1 ]]; then
     choice="y"
   else
     read -p "Fix permissions ? (y/n): " choice
