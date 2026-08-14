@@ -136,7 +136,7 @@ echo "Backup of certificates completed."
 
 ## Restart services
 echo "Restarting services..."
-docker compose up -f ${DOCKER_COMPOSE_PATH}/docker-compose.yml -d
+docker compose -f ${DOCKER_COMPOSE_PATH}/docker-compose.yml up -d
 
 
 
