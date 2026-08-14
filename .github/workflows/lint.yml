@@ -1,0 +1,65 @@
+name: lint
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '**/docker-compose.yml'
+      - '**/scripts/**'
+      - '**/tests/**'
+      - 'versions.env'
+      - '.github/workflows/lint.yml'
+  pull_request:
+    paths:
+      - '**/docker-compose.yml'
+      - '**/scripts/**'
+      - '**/tests/**'
+      - 'versions.env'
+      - '.github/workflows/lint.yml'
+  workflow_dispatch: {}
+
+concurrency:
+  group: lint-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  compose-config:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        env: [testing, prod1-thehive, prod2-thehive, prod1-cortex, prod2-cortex]
+    defaults:
+      run:
+        working-directory: ${{ matrix.env }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Synthesize .env for interpolation
+        run: |
+          cp ../versions.env .env
+          {
+            echo
+            echo "UID=1000"
+            echo "GID=1000"
+            echo "elasticsearch_password=lint"
+            echo "nginx_server_name=localhost"
+            echo "nginx_ssl_trusted_certificate="
+            echo "cortex_docker_job_directory=/tmp/cortex-jobs"
+          } >> .env
+
+      - name: Validate docker compose config
+        run: docker compose config --quiet
+
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: shellcheck (error severity)
+        run: shellcheck --severity=error $(git ls-files '*.sh')
