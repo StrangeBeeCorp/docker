@@ -4,6 +4,13 @@ source $(dirname $0)/output.sh
 ## This program ensures that all files and folders are owned by the current user and permissions are set accordingly to make everything run properly
 ## This program is run by init.sh program
 
+ASSUME_YES=${ASSUME_YES:-0}
+for arg in "$@"; do
+  case "$arg" in
+    -y|--yes) ASSUME_YES=1 ;;
+  esac
+done
+
 CURRENT_USER_ID=$(id -u)
 CURRENT_GROUP_ID=$(id -g)
 
@@ -50,7 +57,11 @@ ${NON_COMPLIANT_EXECUTABLE_FILES}
 " | sed '/^$/d' # strip empty lines
 
   echo  " "
-  read -p "Fix permissions ? (y/n): " choice
+  if [[ "${ASSUME_YES}" -eq 1 ]]; then
+    choice="y"
+  else
+    read -p "Fix permissions ? (y/n): " choice
+  fi
   if [[ "$choice" == "y" || "$choice" == "Y" ]]; then
       # Apply 750 permissions to non-compliant directories
       if [ -n "${NON_COMPLIANT_DIRS}" ]; then
