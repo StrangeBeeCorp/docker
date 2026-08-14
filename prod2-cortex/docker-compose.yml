@@ -40,7 +40,7 @@ services:
       com.strangebee.stack: "cortex-stack"
       com.strangebee.service: "elasticsearch"
       com.strangebee.role: "indexing"
-      com.strangebee.environment: "testing"
+      com.strangebee.environment: "production-cortex"
       com.strangebee.version: "${elasticsearch_image_version}"
       com.strangebee.dependency: "None"
 
@@ -90,7 +90,7 @@ services:
       com.strangebee.stack: "cortex-stack"
       com.strangebee.service: "cortex"
       com.strangebee.role: "application"
-      com.strangebee.environment: "testing"
+      com.strangebee.environment: "production-cortex"
       com.strangebee.version: "${cortex_image_version}"
       com.strangebee.dependency: "elasticsearch"
 
@@ -120,7 +120,7 @@ services:
       com.strangebee.stack: "cortex-stack"
       com.strangebee.service: "nginx"
       com.strangebee.role: "reverse proxy"
-      com.strangebee.environment: "testing"
+      com.strangebee.environment: "production-cortex"
       com.strangebee.version: "${nginx_image_version}"
       com.strangebee.dependency: "cortex"
 
