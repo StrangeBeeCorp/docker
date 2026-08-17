@@ -1,6 +1,6 @@
 services:
   cassandra:
-    image: "cassandra:${cassandra_image_version"
+    image: "cassandra:${cassandra_image_version}"
     container_name: cassandra
     hostname: cassandra
     restart: unless-stopped
