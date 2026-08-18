@@ -1,0 +1,83 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard"
+  ],
+  "timezone": "Etc/UTC",
+  "labels": ["dependencies", "automated"],
+  "commitMessagePrefix": "chore:",
+  "commitMessageAction": "Bump",
+  "commitMessageExtra": "version to {{newVersion}}",
+
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^versions\\.env$/"],
+      "matchStrings": ["thehive_image_version = '(?<currentValue>[^']+)'"],
+      "depNameTemplate": "strangebee/thehive",
+      "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^versions\\.env$/"],
+      "matchStrings": ["cortex_image_version = '(?<currentValue>[^']+)'"],
+      "depNameTemplate": "thehiveproject/cortex",
+      "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^versions\\.env$/"],
+      "matchStrings": ["cassandra_image_version = '(?<currentValue>[^']+)'"],
+      "depNameTemplate": "cassandra",
+      "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^versions\\.env$/"],
+      "matchStrings": ["elasticsearch_image_version = '(?<currentValue>[^']+)'"],
+      "depNameTemplate": "elasticsearch",
+      "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^versions\\.env$/"],
+      "matchStrings": ["nginx_image_version = '(?<currentValue>[^']+)'"],
+      "depNameTemplate": "nginx",
+      "datasourceTemplate": "docker"
+    }
+  ],
+
+  "packageRules": [
+    {
+      "description": "Friendly PR topic for TheHive",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["strangebee/thehive"],
+      "commitMessageTopic": "TheHive"
+    },
+    {
+      "description": "Friendly PR topic for Cortex",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["thehiveproject/cortex"],
+      "commitMessageTopic": "Cortex"
+    },
+    {
+      "description": "Loudly flag major bumps — they may need config migration; a compose that starts is not proof the data model migrated.",
+      "matchManagers": ["custom.regex"],
+      "matchUpdateTypes": ["major"],
+      "addLabels": ["major-bump"]
+    },
+    {
+      "description": "TheHive 5 requires Elasticsearch 8.x; never propose a 9.x bump.",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["elasticsearch"],
+      "allowedVersions": "<9"
+    },
+    {
+      "description": "TheHive 5 runs on Cassandra 4.x; 5.x is a coordinated migration, not a routine bump.",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["cassandra"],
+      "allowedVersions": "<5"
+    }
+  ]
+}
