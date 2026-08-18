@@ -24,6 +24,27 @@
       "matchStrings": ["cortex_image_version = '(?<currentValue>[^']+)'"],
       "depNameTemplate": "thehiveproject/cortex",
       "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^versions\\.env$/"],
+      "matchStrings": ["cassandra_image_version = '(?<currentValue>[^']+)'"],
+      "depNameTemplate": "cassandra",
+      "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^versions\\.env$/"],
+      "matchStrings": ["elasticsearch_image_version = '(?<currentValue>[^']+)'"],
+      "depNameTemplate": "elasticsearch",
+      "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^versions\\.env$/"],
+      "matchStrings": ["nginx_image_version = '(?<currentValue>[^']+)'"],
+      "depNameTemplate": "nginx",
+      "datasourceTemplate": "docker"
     }
   ],
 
