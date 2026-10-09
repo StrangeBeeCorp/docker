@@ -46,6 +46,34 @@
       "matchStrings": ["nginx_image_version = '(?<currentValue>[^']+)'"],
       "depNameTemplate": "nginx",
       "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^versions\\.env$/"],
+      "matchStrings": ["thehive_flow_image_version = '(?<currentValue>[^']+)'"],
+      "depNameTemplate": "strangebee/thehive-flow",
+      "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^versions\\.env$/"],
+      "matchStrings": ["postgresql_image_version = '(?<currentValue>[^']+)'"],
+      "depNameTemplate": "postgres",
+      "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^versions\\.env$/"],
+      "matchStrings": ["temporal_image_version = '(?<currentValue>[^']+)'"],
+      "depNameTemplate": "temporalio/server",
+      "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^versions\\.env$/"],
+      "matchStrings": ["seaweedfs_image_version = '(?<currentValue>[^']+)'"],
+      "depNameTemplate": "chrislusf/seaweedfs",
+      "datasourceTemplate": "docker"
     }
   ],
 
@@ -61,6 +89,26 @@
       "matchDatasources": ["docker"],
       "matchPackageNames": ["thehiveproject/cortex"],
       "commitMessageTopic": "Cortex"
+    },
+    {
+      "description": "Friendly PR topic for TheHive Flow",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["strangebee/thehive-flow"],
+      "commitMessageTopic": "TheHive Flow"
+    },
+    {
+      "description": "Temporal upgrades one minor at a time with a schema migration (temporal-sql-tool update-schema); only patch bumps are routine. temporal_image_version drives both temporalio/server and temporalio/admin-tools.",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["temporalio/server"],
+      "matchUpdateTypes": ["minor", "major"],
+      "enabled": false
+    },
+    {
+      "description": "A PostgreSQL major bump needs pg_upgrade or a dump/restore of the data directory; never propose it as a routine bump.",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["postgres"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
     },
     {
       "description": "Loudly flag major bumps — they may need config migration; a compose that starts is not proof the data model migrated.",
