@@ -1,0 +1,270 @@
+services:
+  postgresql:
+    image: "postgres:${postgresql_image_version}"
+    container_name: thehive-flow-postgresql
+    hostname: postgresql
+    restart: unless-stopped
+    user: ${UID}:${GID}
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=postgres
+      - POSTGRES_PASSWORD=${postgres_password}
+      # Read by scripts/init.sh, which creates the thehive_flow, temporal and temporal_visibility databases
+      - FLOW_DB_PASSWORD=${flow_db_password}
+      - TEMPORAL_DB_PASSWORD=${temporal_db_password}
+    volumes:
+      - ./postgresql/data:/var/lib/postgresql
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '2.000'
+    # Prevent swap https://docs.docker.com/engine/containers/resource_constraints/#prevent-a-container-from-using-swap
+    memswap_limit: 1G
+    networks:
+      - thehive-flow-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres || exit 1"]
+      start_period: 30s
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    labels:
+      com.strangebee.stack: "thehive-flow-stack"
+      com.strangebee.service: "postgresql"
+      com.strangebee.role: "database"
+      com.strangebee.environment: "production-thehive-flow"
+      com.strangebee.version: "${postgresql_image_version}"
+      com.strangebee.dependency: "None"
+
+  temporal:
+    image: "temporalio/server:${temporal_image_version}"
+    container_name: thehive-flow-temporal
+    hostname: temporal
+    restart: unless-stopped
+    user: ${UID}:${GID}
+    environment:
+      # Running as the host UID (no passwd entry): Temporal needs $USER to start
+      - USER=temporal
+      - TEMPORAL_BROADCAST_ADDRESS=127.0.0.1
+      - TEMPORAL_SERVER_CONFIG_FILE_PATH=/etc/temporal/config/temporal.yaml
+      - DYNAMIC_CONFIG_FILE_PATH=/etc/temporal/config/dynamicconfig/production.yaml
+    volumes:
+      # Rendered by init.sh from temporal-server.yaml.template (database password resolved)
+      - ./temporal/config/temporal-server.yaml:/etc/temporal/config/temporal.yaml:ro
+      - ./temporal/config/dynamicconfig:/etc/temporal/config/dynamicconfig:ro
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '2.000'
+    memswap_limit: 1G
+    networks:
+      - thehive-flow-network
+    healthcheck:
+      # Frontend gRPC port; the schema is created by init.sh, not by the server
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 7233 || exit 1"]
+      start_period: 60s
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    labels:
+      com.strangebee.stack: "thehive-flow-stack"
+      com.strangebee.service: "temporal"
+      com.strangebee.role: "workflow engine"
+      com.strangebee.environment: "production-thehive-flow"
+      com.strangebee.version: "${temporal_image_version}"
+      com.strangebee.dependency: "postgresql"
+
+  temporal-admin:
+    # Admin tools, not started by default. Used by init.sh for schema and namespace setup.
+    #   docker compose --profile admin run --rm temporal-admin temporal operator cluster health --address temporal:7233
+    image: "temporalio/admin-tools:${temporal_image_version}"
+    container_name: thehive-flow-temporal-admin
+    profiles: ["admin"]
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+    command: ["sleep", "infinity"]
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    memswap_limit: 256M
+    networks:
+      - thehive-flow-network
+    labels:
+      com.strangebee.stack: "thehive-flow-stack"
+      com.strangebee.service: "temporal-admin"
+      com.strangebee.role: "administration"
+      com.strangebee.environment: "production-thehive-flow"
+      com.strangebee.version: "${temporal_image_version}"
+      com.strangebee.dependency: "temporal"
+
+  s3-store:
+    # S3-compatible object store (SeaweedFS, single process) holding TheHive Flow blobs.
+    # Required: TheHive Flow does not start without a durable blob store. Not published on the host.
+    image: "chrislusf/seaweedfs:${seaweedfs_image_version}"
+    container_name: thehive-flow-s3-store
+    hostname: s3-store
+    restart: unless-stopped
+    user: ${UID}:${GID}
+    command: "mini -dir=/data"
+    volumes:
+      - ./s3-store/data:/data
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.000'
+    memswap_limit: 512M
+    networks:
+      - thehive-flow-network
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8333/healthz"]
+      start_period: 10s
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    labels:
+      com.strangebee.stack: "thehive-flow-stack"
+      com.strangebee.service: "s3-store"
+      com.strangebee.role: "object storage"
+      com.strangebee.environment: "production-thehive-flow"
+      com.strangebee.version: "${seaweedfs_image_version}"
+      com.strangebee.dependency: "None"
+
+  init-s3-store:
+    # One-shot: provisions the S3 identity and the thehive-flow bucket, then exits.
+    # `weed shell` always exits 0, so every step is asserted explicitly. Its output can
+    # contain secret keys in clear text and is never printed.
+    image: "chrislusf/seaweedfs:${seaweedfs_image_version}"
+    container_name: thehive-flow-init-s3-store
+    restart: "no"
+    environment:
+      - S3_ACCESS_KEY_ID=${s3_access_key_id}
+      - S3_SECRET_ACCESS_KEY=${s3_secret_access_key}
+    entrypoint: >-
+      /bin/sh -c '
+      cfg=$$(echo "s3.configure -access_key $$S3_ACCESS_KEY_ID -secret_key $$S3_SECRET_ACCESS_KEY -user thehive-flow -actions Read,Write,List,Tagging -apply" | timeout 60 /usr/bin/weed shell -master s3-store:9333 2>&1);
+      if echo "$$cfg" | grep -qiE "error|failed|panic|refused|denied"; then echo "FATAL: s3.configure failed for the thehive-flow S3 identity"; exit 1; fi;
+      if ! echo "s3.configure" | timeout 60 /usr/bin/weed shell -master s3-store:9333 2>/dev/null | grep -q "\"accessKey\": *\"$$S3_ACCESS_KEY_ID\""; then echo "FATAL: the thehive-flow S3 access key is absent from the store"; exit 1; fi;
+      echo "s3.bucket.create -name thehive-flow" | timeout 60 /usr/bin/weed shell -master s3-store:9333 >/dev/null 2>&1;
+      if ! timeout 30 /usr/bin/curl -sf http://s3-store:8888/buckets/thehive-flow/ >/dev/null 2>&1; then echo "FATAL: bucket thehive-flow does not exist"; exit 1; fi;
+      echo "S3 object store initialised (bucket: thehive-flow)"'
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    memswap_limit: 256M
+    networks:
+      - thehive-flow-network
+    depends_on:
+      s3-store:
+        condition: service_healthy
+    labels:
+      com.strangebee.stack: "thehive-flow-stack"
+      com.strangebee.service: "init-s3-store"
+      com.strangebee.role: "initialisation"
+      com.strangebee.environment: "production-thehive-flow"
+      com.strangebee.version: "${seaweedfs_image_version}"
+      com.strangebee.dependency: "s3-store"
+
+  thehive-flow:
+    image: "strangebee/thehive-flow:${thehive_flow_image_version}"
+    container_name: thehive-flow
+    hostname: thehive-flow
+    restart: unless-stopped
+    user: ${UID}:${GID}
+    # Docker socket access for the Codex activity, which runs code in containers (see README)
+    group_add:
+      - "${docker_gid}"
+    command: ["-config", "/thehive-flow.yml", "-secret", "/secret"]
+    # Shutdown timeout (20s) plus telemetry flush (~5s)
+    stop_grace_period: 30s
+    environment:
+      # Shared with TheHive (TH_ORCHESTRATOR_KEY): TheHive signs, TheHive Flow verifies
+      - BEEFLOW_SECRET_JWT_SYMMETRIC_KEY=${jwt_signing_key}
+      # TheHive API key for TheHive Flow -> TheHive calls. When empty, read from ./thehive-flow/secret/thehive-api-key
+      - BEEFLOW_SECRET_THEHIVE_API_KEY=${thehive_api_key}
+      - FLOW_DB_PASSWORD=${flow_db_password}
+      - FLOW_THEHIVE_URL=${flow_thehive_url}
+      # Public URL used to build webhook URLs
+      - BEEFLOW_API__PUBLIC__URL=${flow_public_url}
+      - BEEFLOW_BLOBSTORE__S3__ACCESS_KEY_ID=${s3_access_key_id}
+      - BEEFLOW_SECRET_S3_SECRET_ACCESS_KEY=${s3_secret_access_key}
+      # Running as the host UID (no passwd entry): OpenTelemetry needs $USER to start
+      - USER=thehive-flow
+      - OTEL_SERVICE_NAME=thehive-flow
+      # Go does not read the cgroup limit: keep ~15% (and at least 128MiB) below the memory limit
+      - GOMEMLIMIT=870MiB
+    volumes:
+      - ./thehive-flow/config/thehive-flow.yml:/thehive-flow.yml:ro
+      - ./thehive-flow/secret:/secret:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '2.000'
+    memswap_limit: 1G
+    networks:
+      - thehive-flow-network
+    ports:
+      # Health endpoints (/livez, /readyz), host-local only
+      - '127.0.0.1:9090:9090'
+    # No healthcheck: the image is distroless (no shell, no curl). Check readiness from
+    # the host with: curl -fsS http://127.0.0.1:9090/readyz
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      temporal:
+        condition: service_healthy
+      init-s3-store:
+        condition: service_completed_successfully
+    labels:
+      com.strangebee.stack: "thehive-flow-stack"
+      com.strangebee.service: "thehive-flow"
+      com.strangebee.role: "application"
+      com.strangebee.environment: "production-thehive-flow"
+      com.strangebee.version: "${thehive_flow_image_version}"
+      com.strangebee.dependency: "postgresql, temporal, s3-store"
+
+  nginx:
+    image: "nginx:${nginx_image_version}"
+    container_name: nginx
+    hostname: nginx
+    restart: unless-stopped
+    environment:
+      SERVER_NAME: "${nginx_server_name}"
+      NGINX_SSL_TRUSTED_CERTIFICATE: "${nginx_ssl_trusted_certificate}"
+      # TheHive addresses (IPv4 or CIDR, comma-separated) allowed to call /api/
+      NGINX_THEHIVE_ADDRESSES: "${nginx_thehive_addresses}"
+    volumes:
+      - ./nginx/templates:/etc/nginx/templates  # Custom Nginx configuration
+      - ./nginx/certs:/etc/nginx/certs  # Directory for custom certificates
+      - ./nginx/docker-entrypoint.d/40-thehive-allow.sh:/docker-entrypoint.d/40-thehive-allow.sh:ro
+    ports:
+      - '443:443'
+    networks:
+      - thehive-flow-network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.000'
+    depends_on:
+      - thehive-flow
+    labels:
+      com.strangebee.stack: "thehive-flow-stack"
+      com.strangebee.service: "nginx"
+      com.strangebee.role: "reverse proxy"
+      com.strangebee.environment: "production-thehive-flow"
+      com.strangebee.version: "${nginx_image_version}"
+      com.strangebee.dependency: "thehive-flow"
+
+
+networks:
+  thehive-flow-network:
