@@ -31,14 +31,20 @@ then
   echo -n "# find . ! -user ${CURRENT_USER_ID} -o ! -group ${CURRENT_GROUP_ID} -exec chown ${CURRENT_USER_ID}:${CURRENT_GROUP_ID} {} \; "
 fi
 
+## TheHive Flow: database and object store contents are managed by their services and not checked;
+## the TheHive API key and the rendered Temporal configuration are secrets kept at 600
+FLOW_DATA_DIRS=(-path ./postgresql/data -o -path ./s3-store/data)
+
 ## List directories with unexpected permissions (should be 750)
-NON_COMPLIANT_DIRS=$(find ./cassandra ./certificates ./elasticsearch ./nginx ./scripts ./thehive -type d ! -perm 750)
+NON_COMPLIANT_DIRS=$(find ./cassandra ./certificates ./elasticsearch ./nginx ./scripts ./thehive ./postgresql ./s3-store ./temporal ./thehive-flow \
+  \( "${FLOW_DATA_DIRS[@]}" \) -prune -o -type d ! -perm 750 -print)
 
 ## Check Cortex directory for unexpected permissions (should be 755)
 NON_COMPLIANT_CORTEX_DIRS=$(find ./cortex -type d ! -perm 755)
 
 ## List non-executable files with unexpected permissions (should be 644)
-NON_COMPLIANT_FILES=$(find ./docker-compose.yml ./dot.env.template ./cassandra ./certificates ./cortex ./elasticsearch ./nginx ./thehive -type f ! -perm 644)
+NON_COMPLIANT_FILES=$(find ./docker-compose.yml ./dot.env.template ./cassandra ./certificates ./cortex ./elasticsearch ./nginx ./thehive ./postgresql ./s3-store ./temporal ./thehive-flow \
+  \( "${FLOW_DATA_DIRS[@]}" \) -prune -o -type f ! -path ./thehive-flow/secret/thehive-api-key ! -path ./temporal/config/temporal-server.yaml ! -perm 644 -print)
 
 ## List executable files with unexpected permissions (should be 755)
 NON_COMPLIANT_EXECUTABLE_FILES=$(find ./scripts -type f ! -perm 755)
