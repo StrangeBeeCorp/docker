@@ -38,6 +38,16 @@ jobs:
       - name: Start the stack (gated on health)
         run: docker compose up -d --wait --wait-timeout 600
 
+      # TheHive Flow has no container healthcheck (distroless image): poll its readiness endpoint
+      - name: TheHive Flow readiness
+        run: |
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:9090/readyz && exit 0
+            sleep 5
+          done
+          echo "TheHive Flow is not ready"
+          exit 1
+
       - name: Smoke test (org / user / case / alert workflow)
         run: bash ./tests/smoke.sh
 

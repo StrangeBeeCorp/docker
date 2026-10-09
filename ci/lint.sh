@@ -6,7 +6,7 @@ set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT" || exit 2
 
-ENVS=(testing prod1-thehive prod2-thehive prod1-cortex prod2-cortex)
+ENVS=(testing prod1-thehive prod2-thehive prod1-cortex prod2-cortex prod1-thehive-flow prod2-thehive-flow)
 
 ENVVARS="$(mktemp)"
 trap 'rm -f "$ENVVARS"' EXIT
@@ -19,6 +19,17 @@ cat versions.env > "$ENVVARS"
   echo "nginx_server_name=localhost"
   echo "nginx_ssl_trusted_certificate="
   echo "cortex_docker_job_directory=/tmp/cortex-jobs"
+  echo "docker_gid=0"
+  echo "postgres_password=lint"
+  echo "flow_db_password=lint"
+  echo "temporal_db_password=lint"
+  echo "s3_access_key_id=thehive-flow"
+  echo "s3_secret_access_key=lint"
+  echo "jwt_signing_key=lint"
+  echo "thehive_api_key="
+  echo "flow_thehive_url=http://thehive:9000"
+  echo "flow_public_url=https://localhost"
+  echo "nginx_thehive_addresses="
 } >> "$ENVVARS"
 
 status=0
