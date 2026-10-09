@@ -1,0 +1,60 @@
+upstream thehive-flow {
+    zone thehive-flow 64k;
+    server thehive-flow:8081 resolve;
+}
+
+resolver 127.0.0.11 valid=10s ipv6=off;
+resolver_timeout 5s;
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name ${SERVER_NAME};
+
+    ssl_certificate /etc/nginx/certs/server.crt;  # Custom certificate path
+    ssl_certificate_key /etc/nginx/certs/server.key;  # Custom key path
+    ${NGINX_SSL_TRUSTED_CERTIFICATE}
+    #ssl_trusted_certificate /etc/nginx/certs/ca.pem;  # Internal CA certificate
+
+    # If custom certificates are not provided, Nginx will use self-signed certificates.
+    ssl_session_cache shared:SSL:1m;
+    ssl_session_timeout 10m;
+
+    proxy_connect_timeout   600;
+    proxy_send_timeout      600;
+    proxy_read_timeout      600;
+    send_timeout            600;
+    client_max_body_size    2G;
+    proxy_buffering off;
+    client_header_buffer_size 8k;
+
+
+    add_header              Strict-Transport-Security "max-age=31536000" always;
+    proxy_set_header        Host $host;
+    proxy_set_header        X-Real-IP $remote_addr;
+    proxy_set_header        X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header        X-Forwarded-Proto $scheme;
+    proxy_http_version      1.1;
+
+    location /webhook/ {
+        proxy_pass http://thehive-flow/webhook/;
+    }
+
+    location /api/ {
+        include /etc/nginx/thehive-allow*.conf;
+        deny all;
+        proxy_pass http://thehive-flow/api/;
+    }
+
+    location = /api {
+        return 404;
+    }
+
+    location = /webhook {
+        return 404;
+    }
+
+    location / {
+        return 404;
+    }
+}
