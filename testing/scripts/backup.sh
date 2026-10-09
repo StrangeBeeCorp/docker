@@ -133,6 +133,15 @@ echo "Starting Elasticsearch backup..."
 rsync -aW --no-compress ${DOCKER_COMPOSE_PATH}/elasticsearch/ ${BACKUP_FOLDER}/elasticsearch || { echo "Elasticsearch config backup failed"; exit 1; }
 echo "Elasticsearch backup completed."
 
+## Copy TheHive Flow data, configuration and .env (its databases can only be restored with the same secrets)
+echo "Starting TheHive Flow backup..."
+for FOLDER in postgresql s3-store temporal thehive-flow
+do
+  rsync -aW --no-compress ${DOCKER_COMPOSE_PATH}/${FOLDER}/ ${BACKUP_FOLDER}/${FOLDER} || { echo "TheHive Flow ${FOLDER} backup failed"; exit 1; }
+done
+cp -p ${DOCKER_COMPOSE_PATH}/.env ${BACKUP_FOLDER}/dot.env || { echo ".env backup failed"; exit 1; }
+echo "TheHive Flow backup completed."
+
 ## Copy Nginx certificates
 echo "Starting backup of Nginx and certificates..."
 rsync -aW --no-compress ${DOCKER_COMPOSE_PATH}/nginx/ ${BACKUP_FOLDER}/nginx || { echo " Backup of Nginx failed"; exit 1; }

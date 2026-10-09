@@ -126,6 +126,15 @@ echo "Restoring Elasticsearch data ..."
 rsync -aW --no-compress ${BACKUP_FOLDER}/elasticsearch/ ${DOCKER_COMPOSE_PATH}/elasticsearch || { echo "Elasticsearch data restore failed"; exit 1; }
 
 
+# Copy TheHive Flow data, configuration and .env (its databases can only be used with the same secrets)
+echo "Restoring TheHive Flow data and configuration..."
+for FOLDER in postgresql s3-store temporal thehive-flow
+do
+  rsync -aW --no-compress ${BACKUP_FOLDER}/${FOLDER}/ ${DOCKER_COMPOSE_PATH}/${FOLDER} || { echo "TheHive Flow ${FOLDER} restore failed"; exit 1; }
+done
+cp -p ${BACKUP_FOLDER}/dot.env ${DOCKER_COMPOSE_PATH}/.env || { echo ".env restore failed"; exit 1; }
+
+
 # Copy Nginx certificates
 echo "Restoring Nginx data and configuration..."
 rsync -a ${BACKUP_FOLDER}/nginx/ ${DOCKER_COMPOSE_PATH}/nginx  ||
