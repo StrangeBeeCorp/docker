@@ -1,0 +1,33 @@
+# Temporal Server dynamic configuration: single node.
+
+# Allow long workflow IDs
+limit.maxIDLength:
+  - value: 255
+
+# Refresh search attribute caches on read
+system.forceSearchAttributesCacheRefreshOnRead:
+  - value: true
+
+# Some TheHive Flow workflows accumulate many history events (fan-out, long retries)
+limit.historyCount.suggestContinueAsNew:
+  - value: 30000
+
+# Single node: one task queue partition
+matching.numTaskqueueReadPartitions:
+  - value: 1
+matching.numTaskqueueWritePartitions:
+  - value: 1
+
+matching.rps:
+  - value: 4000
+history.transferProcessorMaxPollRPS:
+  - value: 100
+history.hostLevelCacheMaxSize:
+  - value: 33000
+history.cacheTTL:
+  - value: 480s
+history.cacheBackgroundEvict:
+  - value:
+      enabled: true
+      loopInterval: 15s
+      maxEntryPerCall: 1024

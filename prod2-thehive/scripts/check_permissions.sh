@@ -35,14 +35,18 @@ fi
 NON_COMPLIANT_DIRS=$(find ./cassandra ./certificates ./elasticsearch ./nginx ./scripts ./thehive -type d ! -perm 750)
 
 ## List non-executable files with unexpected permissions (should be 644)
-NON_COMPLIANT_FILES=$(find ./docker-compose.yml ./dot.env.template ./cassandra ./certificates ./elasticsearch ./nginx ./thehive -type f ! -perm 644)
+NON_COMPLIANT_FILES=$(find ./docker-compose.yml ./dot.env.template ./cassandra ./certificates ./elasticsearch ./nginx ./thehive -type f ! -name '*.key' ! -perm 644)
 
 ## List executable files with unexpected permissions (should be 755)
 NON_COMPLIANT_EXECUTABLE_FILES=$(find ./scripts -type f ! -perm 755)
 
+## List private keys with unexpected permissions (should be 600)
+NON_COMPLIANT_KEY_FILES=$(find ./certificates ./nginx -type f -name '*.key' ! -perm 600)
+
 if [ -z "${NON_COMPLIANT_DIRS}" ] &&\
    [ -z "${NON_COMPLIANT_FILES}" ] &&\
-   [ -z "${NON_COMPLIANT_EXECUTABLE_FILES}" ]
+   [ -z "${NON_COMPLIANT_EXECUTABLE_FILES}" ] &&\
+   [ -z "${NON_COMPLIANT_KEY_FILES}" ]
 then
   success "All files and folders have expected permissions."
   exit 0
@@ -54,6 +58,7 @@ else
   warning "The following files do not have expected permissions:"
   echo -n "${NON_COMPLIANT_FILES}
 ${NON_COMPLIANT_EXECUTABLE_FILES}
+${NON_COMPLIANT_KEY_FILES}
 " | sed '/^$/d' # strip empty lines
 
   echo  " "
@@ -81,6 +86,14 @@ ${NON_COMPLIANT_EXECUTABLE_FILES}
       if [ -n "${NON_COMPLIANT_EXECUTABLE_FILES}" ]; then
           echo "${NON_COMPLIANT_EXECUTABLE_FILES}" | while IFS= read -r file; do
               chmod 755 "$file"
+              success "Updated file permissions for: $file"
+          done
+      fi
+
+      # Apply 600 permissions to non-compliant private keys
+      if [ -n "${NON_COMPLIANT_KEY_FILES}" ]; then
+          echo "${NON_COMPLIANT_KEY_FILES}" | while IFS= read -r file; do
+              chmod 600 "$file"
               success "Updated file permissions for: $file"
           done
       fi

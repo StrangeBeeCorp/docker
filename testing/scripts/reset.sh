@@ -13,12 +13,13 @@ then
   docker compose down
 
   ## Delete folder contents
-  DIRECTORIES="./cassandra/data ./cassandra/logs  ./elasticsearch/data ./elasticsearch/logs  ./thehive/data/files ./thehive/logs ./cortex/logs"
+  DIRECTORIES="./cassandra/data ./cassandra/logs  ./elasticsearch/data ./elasticsearch/logs  ./thehive/data/files ./thehive/logs ./cortex/logs ./postgresql/data ./s3-store/data"
 
 
   for D in ${DIRECTORIES}
   do
-    rm -rf ${D}/*
+    ## Includes hidden files (e.g. SeaweedFS key material), keeps .gitkeep
+    find "${D:?}" -mindepth 1 ! -name .gitkeep -delete
   done
   success "All data removed."
 
@@ -27,6 +28,7 @@ then
   rm ./thehive/config/secret.conf
   rm ./cortex/config/index.conf
   rm ./cortex/config/secret.conf
+  rm -f ./temporal/config/temporal-server.yaml ./thehive-flow/secret/thehive-api-key
   success "index and secret files deleted."
 
   ## DELETE cert files

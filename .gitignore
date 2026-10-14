@@ -22,6 +22,14 @@
 /*/cortex/config/index.conf
 /*/cortex/config/secret.conf
 
+# Ignore folders used as docker bind by TheHive Flow stack containers
+/*/postgresql/data/*
+/*/s3-store/data/*
+
+# Ignore TheHive Flow secrets and rendered Temporal configuration
+/*/thehive-flow/secret/*
+/*/temporal/config/temporal-server.yaml
+
 # Keep track of .gitkeep files to guarantee folder permissions are correct
 !/**/.gitkeep
 

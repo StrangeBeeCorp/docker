@@ -27,6 +27,7 @@ if [[ ${USER_CERT} -eq 1 && ${USER_CERT_KEY} -eq 1 && ${USER_CA} -eq 1  ]]
 then
     success "Using custom certicates found in ${USER_CERT_DIR}."
     cp ${USER_CERT_DIR}/server.crt ${USER_CERT_DIR}/server.key ${USER_CERT_DIR}/ca.pem ${NGINX_CERT_DIR}
+    chmod 600 "${KEY_FILE}"  # Private key: readable by its owner only
     export NGINX_SSL_TRUSTED_CERTIFICATE_CONFIG="ssl_trusted_certificate /etc/nginx/certs/ca.pem;"  # Configuration added to nginx if using custom certificate and authority
 else
     info "No custom certificate found."
@@ -41,6 +42,7 @@ else
         -keyout "$KEY_FILE" \
         -out "$CERT_FILE" \
         -subj "/CN=${SERVER_NAME:-localhost}"
+    chmod 600 "${KEY_FILE}"  # Private key: readable by its owner only (openssl defaults differ between platforms)
     success "Self-signed certificate generated for ${SERVER_NAME:-localhost}."
     export NGINX_SSL_TRUSTED_CERTIFICATE_CONFIG="" # Do not fill in NGINX configuration when using self signed certificate
 fi 
