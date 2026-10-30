@@ -17,16 +17,14 @@ bash $(dirname $0)/test_init_thehive.sh
 SYSTEM_HOSTNAME=$(uname -n)
 
 REPORT="
-Cortex has been initialized with following accounts:
+Cortex:
 
 * Cortex URL: https://${SYSTEM_HOSTNAME}/cortex
-* Administrator:
+* Administrator (created by init.sh):
   Login: admin
-  Password: thehive1234
+  Password: cortex_admin_password in .env (default: secret)
 
-* An Organisation is also created with an orgadmin account:
-  Login: thehive
-  Password: thehive1234
+* Sample analyzers are enabled in the demo organisation (created by init.sh), including TestAnalyzer.
 
 
 TheHive has been initialized with following accounts:
@@ -41,7 +39,7 @@ TheHive has been initialized with following accounts:
   Password: thehive1234
 
 
-TheHive is already integrated with Cortex, and few analyzers are enabled by default.
+TheHive is integrated with Cortex by init.sh.
 "
 
 

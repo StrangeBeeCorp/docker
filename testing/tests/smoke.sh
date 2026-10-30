@@ -59,7 +59,11 @@ ALERT_ID=""; CASE_ID=""
 
 create_org() {
   info "Creating organisation '${ORG_NAME}'..."
-  if api 201 POST "/api/organisation" "${ADMIN_USER}:${ADMIN_PASSWORD}" \
+  ## init.sh already creates it for TheHive Flow
+  if [ "$(curl_api -o /dev/null -w '%{http_code}' -u "${ADMIN_USER}:${ADMIN_PASSWORD}" \
+      "${BASE_URL}/api/organisation/${ORG_NAME}" 2>/dev/null)" = "200" ]; then
+    success "Organisation already exists"
+  elif api 201 POST "/api/organisation" "${ADMIN_USER}:${ADMIN_PASSWORD}" \
     '{"name":"'"${ORG_NAME}"'","description":"Smoke test org"}' >/dev/null; then
     success "Organisation created"
   else
