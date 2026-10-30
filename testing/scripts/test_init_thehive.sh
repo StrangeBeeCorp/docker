@@ -68,7 +68,7 @@ create_org() {
     info "Demo organisation already exists"
     return 0
   fi
-  check 201"$THEHIVE_URL/api/organisation" -H 'Content-Type: application/json' -u admin@thehive.local:secret -d '
+  check 201 "$THEHIVE_URL/api/organisation" -H 'Content-Type: application/json' -u admin@thehive.local:secret -d '
     {
       "description" : "demo organisation",
       "name" : "demo" 
