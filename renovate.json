@@ -71,6 +71,13 @@
     {
       "customType": "regex",
       "managerFilePatterns": ["/^versions\\.env$/"],
+      "matchStrings": ["temporal_admin_tools_image_version = '(?<currentValue>[^']+)'"],
+      "depNameTemplate": "temporalio/admin-tools",
+      "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^versions\\.env$/"],
       "matchStrings": ["seaweedfs_image_version = '(?<currentValue>[^']+)'"],
       "depNameTemplate": "chrislusf/seaweedfs",
       "datasourceTemplate": "docker"
@@ -97,9 +104,9 @@
       "commitMessageTopic": "TheHive Flow"
     },
     {
-      "description": "Temporal upgrades one minor at a time with a schema migration (temporal-sql-tool update-schema); only patch bumps are routine. temporal_image_version drives both temporalio/server and temporalio/admin-tools.",
+      "description": "Temporal upgrades one minor at a time with a schema migration (temporal-sql-tool update-schema); only patch bumps are routine. Keep temporalio/admin-tools on the same minor as temporalio/server: its temporal-sql-tool ships the schema for that minor.",
       "matchDatasources": ["docker"],
-      "matchPackageNames": ["temporalio/server"],
+      "matchPackageNames": ["temporalio/server", "temporalio/admin-tools"],
       "matchUpdateTypes": ["minor", "major"],
       "enabled": false
     },

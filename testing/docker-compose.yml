@@ -254,7 +254,7 @@ services:
 
   temporal-admin:
     # Admin tools, not started by default. Used by init.sh for schema and namespace setup.
-    image: "temporalio/admin-tools:${temporal_image_version}"
+    image: "temporalio/admin-tools:${temporal_admin_tools_image_version}"
     container_name: thehive-flow-temporal-admin
     profiles: ["admin"]
     environment:
@@ -272,7 +272,7 @@ services:
       com.strangebee.service: "temporal-admin"
       com.strangebee.role: "administration"
       com.strangebee.environment: "testing"
-      com.strangebee.version: "${temporal_image_version}"
+      com.strangebee.version: "${temporal_admin_tools_image_version}"
       com.strangebee.dependency: "temporal"
 
   s3-store:
