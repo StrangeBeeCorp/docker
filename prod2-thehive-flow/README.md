@@ -66,4 +66,4 @@ The backup contains `.env`, with every secret of the stack: the databases can on
 
 Image tags are pinned in `../versions.env`. Run `bash ./scripts/init.sh` again to apply them, then `docker compose up -d`.
 
-Temporal minor upgrades require a database schema update (`temporal-sql-tool update-schema`) and must be applied one minor version at a time: follow Temporal's upgrade documentation before changing the minor version of `temporal_image_version`.
+Temporal minor upgrades require a database schema update (`temporal-sql-tool update-schema`) and must be applied one minor version at a time: follow Temporal's upgrade documentation before changing the minor version of `temporal_image_version`, and keep `temporal_admin_tools_image_version` on the same minor (its `temporal-sql-tool` ships the schema for that minor).
