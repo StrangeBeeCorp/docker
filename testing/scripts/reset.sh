@@ -13,7 +13,7 @@ then
   docker compose down
 
   ## Delete folder contents
-  DIRECTORIES="./cassandra/data ./cassandra/logs  ./elasticsearch/data ./elasticsearch/logs  ./thehive/data/files ./thehive/logs ./cortex/logs ./postgresql/data ./s3-store/data"
+  DIRECTORIES="./cassandra/data ./cassandra/logs  ./elasticsearch/data ./elasticsearch/logs  ./thehive/data/files ./thehive/logs ./cortex/logs ./cortex/cortex-jobs ./postgresql/data ./s3-store/data"
 
 
   for D in ${DIRECTORIES}

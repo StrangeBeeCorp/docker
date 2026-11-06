@@ -5,6 +5,7 @@
 # Ignore folders used as docker bind by Cortex container
 /*/cortex/logs/*
 /*/cortex/neurons/*
+/*/cortex/cortex-jobs/*
 
 # Ignore folders used as docker bind by ElasticSearch container
 /*/elasticsearch/data/*
