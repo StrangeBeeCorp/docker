@@ -133,7 +133,10 @@ services:
     container_name: cortex
     hostname: cortex
     restart: unless-stopped
+    # Not root: as root, the entrypoint gives the Docker socket to its own user (1001:1001),
+    # which locks TheHive Flow and the host docker group out
     user: ${UID}:${GID}
+    # Docker socket access to run analyzers and responders in containers
     group_add:
       - "${docker_gid}"
     environment:
