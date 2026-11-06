@@ -55,10 +55,12 @@ modules:
       # Outbound connections to non-public addresses (loopback, RFC 1918, link-local, ...)
       # are blocked. To reach TheHive, Cortex or another service on a private network,
       # allowlist its CIDR range. A bare IP without prefix fails startup.
-      # egress:
-      #   allowlist:
-      #     - 192.168.1.0/24
-      #     - 192.168.1.10/32
+      egress:
+        allowlist:
+          # Fixed addresses of TheHive, Cortex and TheHive Flow (docker-compose.yml)
+          - ${THEHIVE_IP}/32
+          - ${CORTEX_IP}/32
+          - ${THEHIVE_FLOW_IP}/32
       thehive:
         # TheHive URL reachable from this stack (FLOW_THEHIVE_URL in .env)
         url: ${FLOW_THEHIVE_URL}
