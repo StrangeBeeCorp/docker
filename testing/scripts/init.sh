@@ -41,6 +41,36 @@ secret_value() {
   echo "${value:-$(openssl rand -hex 32)}"
 }
 
+## Value of a key in the existing .env file, or its default in dot.env.template
+configured_value() {
+  local value
+  value=$(existing_value "$1")
+  [[ -n "${value}" ]] || value=$(grep -E "^$1=" ./dot.env.template | head -n 1 | cut -d= -f2- | sed -e 's/^"//' -e 's/"$//')
+  echo "${value}"
+}
+
+## Writes .env from dot.env.template. Each KEY=VALUE line takes, in order: the value set by this
+## script in ENV_<KEY>, the value of the existing .env, the default of the template.
+render_env_file() {
+  local line key var value
+  ( umask 077 && : > ./.env.new ) || { error "Cannot write ./.env.new"; exit 1; }
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    if [[ "${line}" =~ ^([A-Za-z_][A-Za-z0-9_]*)= ]]; then
+      key=${BASH_REMATCH[1]}
+      var="ENV_${key}"
+      if declare -p "${var}" > /dev/null 2>&1; then
+        line="${key}=${!var}"
+      else
+        value=$(existing_value "${key}")
+        [[ -n "${value}" ]] && line="${key}=${value}"
+      fi
+    fi
+    printf '%s\n' "${line}"
+  done < ./dot.env.template >> ./.env.new
+  cat ../versions.env >> ./.env.new
+  mv ./.env.new ./.env
+}
+
 ## TheHive Flow: render the Temporal configuration with the database password resolved
 render_temporal_config() {
   local password line
@@ -145,14 +175,16 @@ setup_docker_socket() {
 
   if [[ "${socket_owner}" != "0:${DOCKER_GID}" ]]; then
     warning "The Docker socket is owned by ${socket_owner} instead of root:${DOCKER_GID}: Cortex, TheHive Flow and the docker group of the host may not be able to use it."
-    local choice="y"
+    local fix_cmd="docker run --rm --entrypoint chown -v /var/run/docker.sock:/var/run/docker.sock ${nginx_image} 0:${DOCKER_GID} /var/run/docker.sock"
+    ## Never changes the owner of the host Docker socket without asking
+    local choice="n"
     [[ "${ASSUME_YES}" -eq 1 ]] || read -p "Restore the Docker socket owner to root:${DOCKER_GID} ? (y/n): " choice
     if [[ "${choice}" != "y" && "${choice}" != "Y" ]]; then
-      error "Initialisation stopped: restore the Docker socket owner to root:${DOCKER_GID}, or restart Docker, then run this script again."
+      error "Initialisation stopped: restart Docker, or restore the Docker socket owner with the following command, then run this script again:
+        $ ${fix_cmd}"
       exit 1
     fi
-    docker run --rm --entrypoint chown -v /var/run/docker.sock:/var/run/docker.sock \
-      "${nginx_image}" "0:${DOCKER_GID}" /var/run/docker.sock || { error "Cannot restore the Docker socket owner."; exit 1; }
+    ${fix_cmd} || { error "Cannot restore the Docker socket owner."; exit 1; }
     success "Docker socket owner restored."
   fi
 }
@@ -166,6 +198,8 @@ init() {
     TEMPORAL_DB_PASSWORD=$(secret_value temporal_db_password)
     S3_SECRET_ACCESS_KEY=$(secret_value s3_secret_access_key)
     JWT_SIGNING_KEY=$(secret_value jwt_signing_key)
+    ## Cortex superadmin password, read by setup_cortex_access and scripts/test_init_cortex.sh
+    CORTEX_ADMIN_PASSWORD=$(configured_value cortex_admin_password)
 
     ## INIT THEHIVE CONFIGURATION
     THEHIVEINDEXFILE="./thehive/config/index.conf"
@@ -211,42 +245,24 @@ _EOF_
 
     ## CREATE .env FILE
     ENVFILE="./.env"
-    if [ -f ${ENVFILE} ]
-    then
-        rm -f ${ENVFILE}
-    fi
-    CURRENT_USER_ID=$(id -u)
-    CURRENT_GROUP_ID=$(id -g)
-    sed -e "s/###CHANGEME_ELASTICSEARCH_PASSWORD###/$ELASTICSEARCH_PASSWORD/g" < ./dot.env.template > $ENVFILE
-    cat ../versions.env >> .env
     # Ask user for service hostname
     define_hostname
     check_user_certificates ${SYSTEM_HOSTNAME}
     # bash $(dirname $0)/generate_certs.sh ${SYSTEM_HOSTNAME} # Generate Nginx self-signed certificates if no certificate is installed.
-    cat >> ${ENVFILE} << _EOF_
-## CONFIGURATION AUTOMATICALLY ADDED BY .scripts/init.sh PROGRAM.
-# System variables
-UID=${CURRENT_USER_ID}
-GID=${CURRENT_GROUP_ID}
-
-# Nginx configuration
-nginx_server_name="${SERVICE_HOSTNAME}"
-nginx_ssl_trusted_certificate="${NGINX_SSL_TRUSTED_CERTIFICATE_CONFIG}"
-
-# TheHive Flow configuration (secrets are kept when init.sh is run again)
-postgres_password=${POSTGRES_PASSWORD}
-flow_db_password=${FLOW_DB_PASSWORD}
-temporal_db_password=${TEMPORAL_DB_PASSWORD}
-s3_access_key_id=thehive-flow
-s3_secret_access_key=${S3_SECRET_ACCESS_KEY}
-# Same value as flow.jwt_signing_key in TheHive
-jwt_signing_key=${JWT_SIGNING_KEY}
-thehive_api_key=
-flow_thehive_url=http://thehive:9000/thehive
-flow_public_url=https://${SERVICE_HOSTNAME}/flow
-docker_gid=${DOCKER_GID}
-_EOF_
-    chmod 600 ${ENVFILE}
+    ## Values set by this script, the others come from the existing .env or dot.env.template
+    ENV_UID=$(id -u)
+    ENV_GID=$(id -g)
+    ENV_docker_gid=${DOCKER_GID}
+    ENV_elasticsearch_password="'${ELASTICSEARCH_PASSWORD}'"
+    ENV_nginx_server_name="\"${SERVICE_HOSTNAME}\""
+    ENV_nginx_ssl_trusted_certificate="\"${NGINX_SSL_TRUSTED_CERTIFICATE_CONFIG}\""
+    ENV_postgres_password=${POSTGRES_PASSWORD}
+    ENV_flow_db_password=${FLOW_DB_PASSWORD}
+    ENV_temporal_db_password=${TEMPORAL_DB_PASSWORD}
+    ENV_s3_secret_access_key=${S3_SECRET_ACCESS_KEY}
+    ENV_jwt_signing_key=${JWT_SIGNING_KEY}
+    ENV_flow_public_url=https://${SERVICE_HOSTNAME}/flow
+    render_env_file
 
     ## INIT THEHIVE FLOW
     render_temporal_config
@@ -276,6 +292,11 @@ _EOF_
     setup_thehive_flow_access
     setup_cortex_access
 
+    info "Default accounts:
+        TheHive superadmin: ${THEHIVE_ADMIN_USER} / ${THEHIVE_ADMIN_PASSWORD}
+        Cortex superadmin:  ${CORTEX_ADMIN_USER} / ${CORTEX_ADMIN_PASSWORD} (cortex_admin_password in .env)
+        Change these passwords before exposing this host.
+        "
     if [ ${STATUS} == 0 ]
     then
         success "Initialisation completed."

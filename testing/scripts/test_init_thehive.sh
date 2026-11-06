@@ -63,7 +63,12 @@ restart_services() {
 }
 
 create_org() {
-  check 201 "$THEHIVE_URL/api/organisation" -H 'Content-Type: application/json' -u admin@thehive.local:secret -d '
+  if [ "$(curl -k -s -o /dev/null -w '%{http_code}' -u admin@thehive.local:secret "$THEHIVE_URL/api/organisation/demo")" = "200" ]
+  then
+    info "Demo organisation already exists"
+    return 0
+  fi
+  check 201"$THEHIVE_URL/api/organisation" -H 'Content-Type: application/json' -u admin@thehive.local:secret -d '
     {
       "description" : "demo organisation",
       "name" : "demo" 
@@ -338,122 +343,8 @@ create_case() {
 
 
 
-add_cortex() {
-  info " Configuring Cortex"
-  key=`cat /tmp/cortex_key`
-  check 204 -XPUT "$THEHIVE_URL/api/v1/admin/config/cortex" -H 'Content-Type: application/json' -H "X-Organisation: admin" -u admin@thehive.local:secret -d '{
-  "statusCheckInterval": "1 minute",
-  "refreshDelay": "5 seconds",
-  "maxRetryOnError": 3,
-  "jobTimeout": "3 hours",
-  "servers": [
-    {
-      "name": "Cortex",
-      "url": "http://cortex:9001/cortex",
-      "includedTheHiveOrganisations": [
-        "*"
-      ],
-      "excludedTheHiveOrganisations": [],
-      "wsConfig": {
-        "timeout": {
-          "connection": "2 minutes",
-          "idle": "2 minutes",
-          "request": "2 minutes"
-        },
-        "followRedirects": true,
-        "useProxyProperties": true,
-        "userAgent": null,
-        "compressionEnabled": false,
-        "ssl": {
-          "default": false,
-          "protocol": "TLSv1.2",
-          "checkRevocation": null,
-          "revocationLists": [],
-          "debug": {
-            "all": false,
-            "keymanager": false,
-            "ssl": false,
-            "sslctx": false,
-            "trustmanager": false
-          },
-          "loose": {
-            "acceptAnyCertificate": false,
-            "allowLegacyHelloMessages": null,
-            "allowUnsafeRenegotiation": null,
-            "allowWeakCiphers": false,
-            "allowWeakProtocols": false,
-            "disableHostnameVerification": false,
-            "disableSNI": false
-          },
-          "enabledCipherSuites": [],
-          "enabledProtocols": [
-            "TLSv1.2",
-            "TLSv1.1",
-            "TLSv1"
-          ],
-          "hostnameVerifierClass": "com.typesafe.sslconfig.ssl.NoopHostnameVerifier",
-          "disabledSignatureAlgorithms": [
-            "MD2",
-            "MD4",
-            "MD5"
-          ],
-          "disabledKeyAlgorithms": [
-            "RSA keySize < 2048",
-            "DSA keySize < 2048",
-            "EC keySize < 224"
-          ],
-          "keyManager": {
-            "algorithm": "SunX509",
-            "stores": [],
-            "prototype": {
-              "stores": {
-                "type": null,
-                "path": null,
-                "data": null,
-                "password": null
-              }
-            }
-          },
-          "trustManager": {
-            "algorithm": "PKIX",
-            "stores": [],
-            "prototype": {
-              "stores": {
-                "type": null,
-                "path": null,
-                "data": null
-              }
-            }
-          },
-          "sslParameters": {
-            "clientAuth": "Default",
-            "protocols": []
-          }
-        },
-        "maxConnectionsPerHost": -1,
-        "maxConnectionsTotal": -1,
-        "maxConnectionLifetime": "Inf",
-        "idleConnectionInPoolTimeout": "1 minute",
-        "maxNumberOfRedirects": 5,
-        "maxRequestRetry": 5,
-        "disableUrlEncoding": false,
-        "keepAlive": true,
-        "useLaxCookieEncoder": false,
-        "useCookieStore": false
-      },
-      "auth": {
-        "type": "bearer",
-        "key": "'${key}'"
-        }
-      }
-    ]
-  }'
-  
-  rm /tmp/cortex_key
-}
 
 check_service
-add_cortex
 create_org
 create_orgadmin
 create_customfields

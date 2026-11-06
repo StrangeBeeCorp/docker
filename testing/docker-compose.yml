@@ -105,7 +105,8 @@ services:
           memory: 2G
     memswap_limit: 2G
     networks:
-      - thehive-cortex-network
+      thehive-cortex-network:
+        ipv4_address: ${thehive_ip:-172.30.0.10}
     ports:
       - '0.0.0.0:9000:9000'
     healthcheck:
@@ -132,10 +133,7 @@ services:
     container_name: cortex
     hostname: cortex
     restart: unless-stopped
-    # Not root: as root, the entrypoint gives the Docker socket to its own user (1001:1001),
-    # which locks TheHive Flow and the host docker group out
     user: ${UID}:${GID}
-    # Docker socket access to run analyzers and responders in containers
     group_add:
       - "${docker_gid}"
     environment:
@@ -162,7 +160,8 @@ services:
           memory: 2G
     memswap_limit: 2G
     networks:
-      - thehive-cortex-network
+      thehive-cortex-network:
+        ipv4_address: ${cortex_ip:-172.30.0.11}
     ports:
       - '0.0.0.0:9001:9001'
     healthcheck:
@@ -366,6 +365,10 @@ services:
       - BEEFLOW_SECRET_THEHIVE_API_KEY=${thehive_api_key}
       - FLOW_DB_PASSWORD=${flow_db_password}
       - FLOW_THEHIVE_URL=${flow_thehive_url}
+      # Only destinations allowed by the egress guard (thehive-flow.yml)
+      - THEHIVE_IP=${thehive_ip:-172.30.0.10}
+      - CORTEX_IP=${cortex_ip:-172.30.0.11}
+      - THEHIVE_FLOW_IP=${thehive_flow_ip:-172.30.0.12}
       # Public URL used to build webhook URLs (served by Nginx under /flow)
       - BEEFLOW_API__PUBLIC__URL=${flow_public_url}
       - BEEFLOW_BLOBSTORE__S3__ACCESS_KEY_ID=${s3_access_key_id}
@@ -385,7 +388,8 @@ services:
           memory: 1G
     memswap_limit: 1G
     networks:
-      - thehive-cortex-network
+      thehive-cortex-network:
+        ipv4_address: ${thehive_flow_ip:-172.30.0.12}
     ports:
       # Health endpoints (/livez, /readyz), host-local only
       - '127.0.0.1:9090:9090'
@@ -441,7 +445,8 @@ services:
 
 networks:
   thehive-cortex-network:
-    # Fixed range: allowlisted in the egress guard of TheHive Flow (thehive-flow/config/thehive-flow.yml)
     ipam:
       config:
-        - subnet: 172.30.0.0/24
+        - subnet: ${stack_subnet:-172.30.0.0/24}
+          # Addresses given to the other containers: keeps the fixed ones (thehive_ip, ...) free
+          ip_range: ${stack_ip_range:-172.30.0.128/25}

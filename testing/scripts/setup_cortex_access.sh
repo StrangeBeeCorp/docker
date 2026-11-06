@@ -8,6 +8,7 @@ CORTEX_LOCAL_URL="${CORTEX_LOCAL_URL:-http://127.0.0.1:9001/cortex}"
 ## URL used by TheHive to reach Cortex: Cortex is served under /cortex
 CORTEX_THEHIVE_URL="${CORTEX_THEHIVE_URL:-http://cortex:9001/cortex}"
 CORTEX_ADMIN_USER="${CORTEX_ADMIN_USER:-admin}"
+## cortex_admin_password in .env, same default as TheHive
 CORTEX_ADMIN_PASSWORD="${CORTEX_ADMIN_PASSWORD:-secret}"
 ## Same organisation name as the one created in TheHive for TheHive Flow
 CORTEX_ORG="${CORTEX_ORG:-${FLOW_ORG:-demo}}"
@@ -73,6 +74,7 @@ cx_enable_analyzers() {
     case "${analyzer}" in
       EmlParser_*) config='"email_visualisation":true,"wkhtmltoimage_path":"/usr/bin/wkhtmltoimage","auto_extract_artifacts":true,"check_tlp":false,"max_tlp":2,"check_pap":false,"max_pap":2' ;;
       FileInfo_*) config='"manalyze_enable":false,"manalyze_enable_docker":false,"manalyze_enable_binary":false,"auto_extract_artifacts":true,"check_tlp":false,"max_tlp":2,"check_pap":false,"max_pap":2' ;;
+      TestAnalyzer_*) config='"throw_error":false,"auto_extract_artifacts":false,"check_tlp":false,"max_tlp":2,"check_pap":false,"max_pap":2' ;;
     esac
     code=$(cx_api POST "/api/organization/analyzer/${analyzer}" '{"name":"'"${analyzer}"'","configuration":{'"${config}"'},"jobCache":10,"jobTimeout":30}' "${key}")
     if [[ "${code}" == "201" || "${code}" == "200" ]]; then
@@ -85,6 +87,17 @@ cx_enable_analyzers() {
 
 cx_login() {
   [[ "$(cx_api POST /api/login '{"user":"'"${CORTEX_ADMIN_USER}"'","password":"'"${CORTEX_ADMIN_PASSWORD}"'"}')" == "200" ]]
+}
+
+## cx_user_key USER [renew]: prints the API key of USER (a new one with "renew"), read with the
+## cx_login session. Never stored: the key goes from curl to stdout only. Prints nothing without a key.
+cx_user_key() {
+  local endpoint="/api/user/$1/key" method=GET key
+  [[ "${2:-}" == "renew" ]] && { endpoint="${endpoint}/renew"; method=POST; }
+  key=$(curl -s --connect-timeout 5 --max-time 30 -X "${method}" -b "${_cx_cookies}" -c "${_cx_cookies}" \
+    "${CORTEX_LOCAL_URL}${endpoint}" 2> /dev/null | tr -d '"[:space:]')
+  ## A key is a bare string, an error a JSON object
+  [[ ${#key} -ge 16 && "${key}" != *[\{\}\\]* ]] && printf '%s' "${key}"
 }
 
 ## Creates the resource with POST unless GET shows it already exists
@@ -128,7 +141,7 @@ setup_cortex_access() {
   else
     code=$(cx_api POST /api/user '{"login":"'"${CORTEX_ADMIN_USER}"'","name":"'"${CORTEX_ADMIN_USER}"'","password":"'"${CORTEX_ADMIN_PASSWORD}"'","roles":["superadmin"],"organization":"cortex"}')
     if [[ "${code}" != "201" ]]; then
-      error "Cannot create the Cortex superadmin '${CORTEX_ADMIN_USER}' (HTTP ${code}): $(cat "${_cx_response}")"
+      error "Cannot create the Cortex superadmin '${CORTEX_ADMIN_USER}' (HTTP ${code}): $(cat "${_cx_response}"). If Cortex already has one, set its password in cortex_admin_password in .env."
       exit 1
     fi
     cx_login || { error "Cannot authenticate to Cortex as ${CORTEX_ADMIN_USER}."; exit 1; }
@@ -142,26 +155,20 @@ setup_cortex_access() {
 
   ## Keep the key of a previous run: TheHive may already use it
   local key
-  code=$(cx_api GET "/api/user/${CORTEX_ORG_ADMIN}/key")
-  key=$(tr -d '"[:space:]' < "${_cx_response}")
-  if [[ "${code}" != "200" || ${#key} -lt 16 ]]; then
-    code=$(cx_api POST "/api/user/${CORTEX_ORG_ADMIN}/key/renew")
-    key=$(tr -d '"[:space:]' < "${_cx_response}")
-    if [[ "${code}" != "200" || ${#key} -lt 16 ]]; then
-      error "Cannot create the API key of '${CORTEX_ORG_ADMIN}' (HTTP ${code})"
-      exit 1
-    fi
+  key=$(cx_user_key "${CORTEX_ORG_ADMIN}")
+  if [[ -z "${key}" ]]; then
+    key=$(cx_user_key "${CORTEX_ORG_ADMIN}" renew)
+    [[ -n "${key}" ]] || { error "Cannot create the API key of '${CORTEX_ORG_ADMIN}'"; exit 1; }
     success "Cortex API key of '${CORTEX_ORG_ADMIN}' created."
-  fi
-  if [[ "${key}" == *[\{\}\"\\]* ]]; then
-    error "Unexpected Cortex API key format for '${CORTEX_ORG_ADMIN}'"
-    exit 1
   fi
 
   cx_enable_analyzers "${key}"
 
-  code=$(th_api GET /api/v1/admin/config/cortex)
-  if [[ "${code}" == "200" ]] && grep -qF "\"key\":\"${key}\"" "${_th_response}"; then
+  ## Compared in memory: the TheHive configuration holds the API key
+  local config
+  config=$(curl -s --connect-timeout 5 --max-time 30 -u "${THEHIVE_ADMIN_USER}:${THEHIVE_ADMIN_PASSWORD}" \
+    "${THEHIVE_LOCAL_URL}/api/v1/admin/config/cortex" 2> /dev/null)
+  if [[ "${config}" == *"\"key\":\"${key}\""* ]]; then
     info "Cortex already registered in TheHive."
     return 0
   fi

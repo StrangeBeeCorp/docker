@@ -57,9 +57,10 @@ modules:
       # allowlist its CIDR range. A bare IP without prefix fails startup.
       egress:
         allowlist:
-          # Network of this stack (thehive-cortex-network in docker-compose.yml): TheHive, Cortex, ...
-          - 172.30.0.0/24
-          # - 192.168.1.10/32
+          # Fixed addresses of TheHive, Cortex and TheHive Flow (docker-compose.yml)
+          - ${THEHIVE_IP}/32
+          - ${CORTEX_IP}/32
+          - ${THEHIVE_FLOW_IP}/32
       thehive:
         # TheHive URL reachable from this stack (FLOW_THEHIVE_URL in .env)
         url: ${FLOW_THEHIVE_URL}
