@@ -5,6 +5,8 @@
     ":dependencyDashboard",
     "helpers:pinGitHubActionDigests"
   ],
+  "minimumReleaseAge": "3 days",
+  "minimumReleaseAgeBehaviour": "timestamp-optional",
   "timezone": "Etc/UTC",
   "labels": ["dependencies", "automated"],
   "commitMessagePrefix": "chore:",
